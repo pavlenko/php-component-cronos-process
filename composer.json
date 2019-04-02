@@ -1,0 +1,36 @@
+{
+    "config": {
+        "sort-packages": true
+    },
+    "name": "pe/component-cronos-process",
+    "description": "Cronos process fork/daemon sub-component",
+    "keywords": [],
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Eugene Pavlenko",
+            "email": "pavlenko.obs@gmail.com"
+        }
+    ],
+    "require": {
+        "php": ">=7.1"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "~6.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "PE\\Component\\Cronos\\Process\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "PE\\Component\\Cronos\\Process\\Tests\\": "tests/"
+        }
+    },
+    "extra": {
+        "branch-alias": {
+            "dev-master": "1.0-dev"
+        }
+    }
+}
