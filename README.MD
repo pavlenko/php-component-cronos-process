@@ -9,7 +9,7 @@ The following versions of PHP are supported.
 To install, use composer:
 
 ```
-php composer.phar require pe/component-cronos-expression
+php composer.phar require pe/component-cronos-process
 ```
 
 ## Process forking usage example
