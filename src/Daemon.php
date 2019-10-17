@@ -17,6 +17,16 @@ class Daemon
         $this->pidFile = $pidFile;
     }
 
+    public function createPIDFile($pid)
+    {
+        file_put_contents($this->pidFile, $pid);
+    }
+
+    public function removePIDFile()
+    {
+        @unlink($this->pidFile);
+    }
+
     /**
      * Run process as a daemon
      *
@@ -35,7 +45,8 @@ class Daemon
                 return;
             }
 
-            unlink($this->pidFile);
+            $this->removePIDFile();
+            //unlink($this->pidFile);
         }
 
         $pid = PCNTL::getInstance()->fork();
@@ -45,7 +56,8 @@ class Daemon
         }
 
         if ($pid) {
-            file_put_contents($this->pidFile, $pid);
+            $this->createPIDFile($pid);
+            //file_put_contents($this->pidFile, $pid);
 
             $process->setPid($pid);
             $process->exit(0);
@@ -57,7 +69,8 @@ class Daemon
         $process->setPid((int) file_get_contents($this->pidFile));
         $process->run();
 
-        @unlink($this->pidFile);
+        $this->removePIDFile();
+        //@unlink($this->pidFile);
     }
 
     /**

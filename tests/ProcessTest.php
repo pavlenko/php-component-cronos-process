@@ -48,6 +48,8 @@ class ProcessTest extends TestCase
         $process = new Process();
         $signals = new Signals();
 
+        $this->pcntl->method('setSignalHandler')->willReturn(true);
+
         self::assertNotSame($signals, $process->getSignals());
 
         $process->setSignals($signals);
@@ -68,10 +70,10 @@ class ProcessTest extends TestCase
     {
         $this->pcntl->expects(self::once())->method('setAsyncSignalsEnabled')->with(true);
 
-        $this->signals
-            ->expects(self::once())
-            ->method('registerHandler')
-            ->with(PCNTL::SIGTERM, [$this->process, 'onSignalTerminate']);
+//        $this->signals
+//            ->expects(self::once())
+//            ->method('registerHandler')
+//            ->with(PCNTL::SIGTERM, [$this->process, 'onSignalTerminate']);
 
         /* @var $callable callable|MockObject */
         $callable = $this->getMockBuilder(\stdClass::class)->setMethods(['__invoke'])->getMock();
@@ -106,13 +108,13 @@ class ProcessTest extends TestCase
     {
         $this->pcntl->expects(self::once())->method('fork')->willReturn(1000);
 
-        $this->signals
-            ->expects(self::exactly(2))
-            ->method('registerHandler')
-            ->withConsecutive(
-                [PCNTL::SIGTERM, [$this->process, 'onSignalTerminate']],
-                [PCNTL::SIGCHLD, [$this->process, 'onSignalFromChild']]
-            );
+//        $this->signals
+//            ->expects(self::exactly(2))
+//            ->method('registerHandler')
+//            ->withConsecutive(
+//                [PCNTL::SIGTERM, [$this->process, 'onSignalTerminate']],
+//                [PCNTL::SIGCHLD, [$this->process, 'onSignalFromChild']]
+//            );
 
         $child = new Process();
         $child->setCallable(function(){});
@@ -203,7 +205,7 @@ class ProcessTest extends TestCase
     {
         $this->pcntl->expects(self::once())->method('setAsyncSignalsEnabled')->with(true);
 
-        $this->signals->expects(self::once())->method('registerHandler');
+//        $this->signals->expects(self::once())->method('registerHandler');
 
         /* @var $process Process|MockObject */
         $process = $this->createTestProxy(Process::class);

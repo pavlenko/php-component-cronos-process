@@ -17,6 +17,11 @@ class Process
     /**
      * @var string
      */
+    private $alias;
+
+    /**
+     * @var string
+     */
     private $title;
 
     /**
@@ -43,12 +48,13 @@ class Process
      * Sets the process title.
      *
      * @param string $title
+     * @param bool   $force
      *
      * @codeCoverageIgnore
      */
-    public function setProcessTitle(string $title): void
+    public function setProcessTitle(string $title, bool $force = false): void
     {
-        if ($this->runned) {
+        if ($this->runned || $force) {
             \cli_set_process_title($this->title = $title);
         } else {
             $this->title = $title;
@@ -92,6 +98,22 @@ class Process
     }
 
     /**
+     * @return string
+     */
+    public function getAlias(): string
+    {
+        return (string) $this->alias;
+    }
+
+    /**
+     * @param string $alias
+     */
+    public function setAlias(string $alias): void
+    {
+        $this->alias = $alias;
+    }
+
+    /**
      * @return callable|null
      */
     public function getCallable(): ?callable
@@ -108,11 +130,15 @@ class Process
     }
 
     /**
+     * @param string|null $alias
+     *
      * @return Process[]
      */
-    public function getChildren(): array
+    public function getChildren(string $alias = null): array
     {
-        return $this->children;
+        return array_filter($this->children, function (Process $process) use ($alias) {
+            return empty($alias) || $process->getAlias() === $alias;
+        });
     }
 
     /**
@@ -121,7 +147,7 @@ class Process
     public function getSignals(): Signals
     {
         if ($this->signals === null) {
-            $this->signals = new Signals();
+            $this->setSignals(new Signals());
         }
 
         return $this->signals;
@@ -133,6 +159,9 @@ class Process
     public function setSignals(Signals $signals): void
     {
         $this->signals = $signals;
+        $this->signals->registerHandler(PCNTL::SIGTERM, [$this, 'onSignalTerminate']);
+        $this->signals->registerHandler(PCNTL::SIGINT, [$this, 'onSignalTerminate']);
+        $this->signals->registerHandler(PCNTL::SIGCHLD, [$this, 'onSignalFromChild']);
     }
 
     /**
@@ -185,8 +214,9 @@ class Process
 
         PCNTL::getInstance()->setAsyncSignalsEnabled(true);
 
-        $signals = $this->getSignals();
-        $signals->registerHandler(PCNTL::SIGTERM, [$this, 'onSignalTerminate']);
+//        $signals = $this->getSignals();
+//        $signals->registerHandler(PCNTL::SIGTERM, [$this, 'onSignalTerminate']);
+//        $signals->registerHandler(PCNTL::SIGINT, [$this, 'onSignalTerminate']);
 
         call_user_func($this->callable, $this);
     }
@@ -206,9 +236,10 @@ class Process
             $this->setProcessTitle($this->title);
         }
 
-        $signals = $this->getSignals();
-        $signals->registerHandler(PCNTL::SIGTERM, [$this, 'onSignalTerminate']);
-        $signals->registerHandler(PCNTL::SIGCHLD, [$this, 'onSignalFromChild']);
+//        $signals = $this->getSignals();
+//        $signals->registerHandler(PCNTL::SIGTERM, [$this, 'onSignalTerminate']);
+//        $signals->registerHandler(PCNTL::SIGINT, [$this, 'onSignalTerminate']);
+//        $signals->registerHandler(PCNTL::SIGCHLD, [$this, 'onSignalFromChild']);
 
         $pid = PCNTL::getInstance()->fork();
 
