@@ -5,6 +5,9 @@
          colors="true"
          stopOnFailure="false"
          bootstrap="./vendor/autoload.php">
+    <php>
+        <const name="UNIT_TESTING" value="TRUE"/>
+    </php>
     <testsuites>
         <testsuite name="Test Suite">
             <directory>./tests</directory>

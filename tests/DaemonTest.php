@@ -3,9 +3,11 @@
 namespace PE\Component\Cronos\Process\Tests;
 
 use PE\Component\Cronos\Process\Daemon;
+use PE\Component\Cronos\Process\FactoryInterface;
 use PE\Component\Cronos\Process\PCNTL;
 use PE\Component\Cronos\Process\POSIX;
-use PE\Component\Cronos\Process\Process;
+use PE\Component\Cronos\Process\WorkerControlInterface;
+use PE\Component\Cronos\Process\WorkerProcessInterface;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 
@@ -27,15 +29,21 @@ class DaemonTest extends TestCase
     private $pcntl;
 
     /**
+     * @var FactoryInterface|MockObject
+     */
+    private $factory;
+
+    /**
      * @var Daemon
      */
     private $daemon;
 
     protected function setUp()
     {
-        $this->posix  = $this->createMock(POSIX::class);
-        $this->pcntl  = $this->createMock(PCNTL::class);
-        $this->daemon = new Daemon($this->pidFile);
+        $this->posix   = $this->createMock(POSIX::class);
+        $this->pcntl   = $this->createMock(PCNTL::class);
+        $this->factory = $this->createMock(FactoryInterface::class);
+        $this->daemon  = new Daemon($this->pidFile, $this->factory);
 
         POSIX::setInstance($this->posix);
         PCNTL::setInstance($this->pcntl);
@@ -46,49 +54,27 @@ class DaemonTest extends TestCase
         @unlink($this->pidFile);
     }
 
-    public function testForkErrorCallable(): void
-    {
-        $this->expectException(\RuntimeException::class);
-
-        /* @var $process Process|MockObject */
-        $process = $this->createMock(Process::class);
-
-        $this->daemon->fork($process);
-    }
-
     public function testForkErrorPCNTL(): void
     {
         $this->expectException(\RuntimeException::class);
 
         $this->pcntl->expects(self::once())->method('fork')->willReturn(-1);
 
-        /* @var $process Process|MockObject */
-        $process = $this->createMock(Process::class);
-        $process->expects(self::once())->method('getCallable')->willReturn(function () {});
-
-        $this->daemon->fork($process);
+        $this->daemon->fork(function(){});
     }
 
     public function testForkSkipAlreadyRunning(): void
     {
-        /* @var $process Process|MockObject */
-        $process = $this->createMock(Process::class);
-        $process->expects(self::once())->method('getCallable')->willReturn(function () {});
-
         file_put_contents($this->pidFile, '1000');
 
         $this->posix->expects(self::once())->method('kill')->with(1000, 0)->willReturn(true);
         $this->pcntl->expects(self::never())->method('fork');
 
-        $this->daemon->fork($process);
+        $this->daemon->fork(function(){});
     }
 
     public function testForkUnlinkDefunctFile(): void
     {
-        /* @var $process Process|MockObject */
-        $process = $this->createMock(Process::class);
-        $process->expects(self::once())->method('getCallable')->willReturn(function () {});
-
         file_put_contents($this->pidFile, '1000');
 
         $this->posix->expects(self::once())->method('kill')->with(1000, 0)->willReturn(false);
@@ -100,31 +86,33 @@ class DaemonTest extends TestCase
         // We need an exception for prevent execution code after
         $this->expectException(\RuntimeException::class);
 
-        $this->daemon->fork($process);
+        $this->daemon->fork(function(){});
     }
 
     public function testForkParent(): void
     {
-        /* @var $process Process|MockObject */
-        $process = $this->createMock(Process::class);
-        $process->expects(self::once())->method('getCallable')->willReturn(function () {});
+        /* @var $process WorkerControlInterface|MockObject */
+        $process = $this->createMock(WorkerControlInterface::class);
         $process->expects(self::once())->method('setPID')->with(1000);
         $process->expects(self::once())->method('exit');
 
+        $this->factory->method('createWorkerControl')->willReturn($process);
+
         $this->pcntl->expects(self::once())->method('fork')->willReturn(1000);
 
-        $this->daemon->fork($process);
+        $this->daemon->fork(function(){});
 
         self::assertStringEqualsFile($this->pidFile, '1000');
     }
 
     public function testForkChild(): void
     {
-        /* @var $process Process|MockObject */
-        $process = $this->createMock(Process::class);
-        $process->expects(self::once())->method('getCallable')->willReturn(function () {});
+        /* @var $process WorkerProcessInterface|MockObject */
+        $process = $this->createMock(WorkerProcessInterface::class);
         $process->expects(self::once())->method('setPID')->with(1000);
-        $process->expects(self::once())->method('run');
+        $process->expects(self::once())->method('work');
+
+        $this->factory->method('createWorkerProcess')->willReturn($process);
 
         $this->posix->expects(self::once())->method('setSessionID');
         $this->pcntl->expects(self::once())->method('fork')->willReturnCallback(function () {
@@ -132,7 +120,7 @@ class DaemonTest extends TestCase
             return 0;
         });
 
-        $this->daemon->fork($process);
+        $this->daemon->fork(function(){});
     }
 
     public function testKillWithoutFile(): void

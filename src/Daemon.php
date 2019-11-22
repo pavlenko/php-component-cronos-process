@@ -10,19 +10,26 @@ class Daemon
     private $pidFile;
 
     /**
-     * @param string $pidFile
+     * @var FactoryInterface
      */
-    public function __construct(string $pidFile)
+    private $factory;
+
+    /**
+     * @param string                $pidFile
+     * @param FactoryInterface|null $factory
+     */
+    public function __construct(string $pidFile, FactoryInterface $factory = null)
     {
         $this->pidFile = $pidFile;
+        $this->factory = $factory ?: new Factory();
     }
 
-    public function createPIDFile($pid)
+    public function createPIDFile($pid): void
     {
         file_put_contents($this->pidFile, $pid);
     }
 
-    public function removePIDFile()
+    public function removePIDFile(): void
     {
         @unlink($this->pidFile);
     }
@@ -30,14 +37,10 @@ class Daemon
     /**
      * Run process as a daemon
      *
-     * @param Process $process
+     * @param callable $callable
      */
-    public function fork(Process $process): void
+    public function fork(callable $callable): void
     {
-        if (!$process->getCallable()) {
-            throw new \RuntimeException('Cannot fork process without callable');
-        }
-
         if (is_file($this->pidFile)) {
             $pid = (int) file_get_contents($this->pidFile);
 
@@ -46,7 +49,6 @@ class Daemon
             }
 
             $this->removePIDFile();
-            //unlink($this->pidFile);
         }
 
         $pid = PCNTL::getInstance()->fork();
@@ -55,22 +57,23 @@ class Daemon
             throw new \RuntimeException('Failure to fork process');
         }
 
+        $worker = $this->factory->createWorkerControl();
+        $thread = $this->factory->createWorkerProcess($callable);
+
         if ($pid) {
             $this->createPIDFile($pid);
-            //file_put_contents($this->pidFile, $pid);
 
-            $process->setPid($pid);
-            $process->exit(0);
+            $worker->setPid($pid);
+            $worker->exit(0);
             return;
         }
 
         POSIX::getInstance()->setSessionID();
 
-        $process->setPid((int) file_get_contents($this->pidFile));
-        $process->run();
+        $thread->setPid((int) file_get_contents($this->pidFile));
+        $thread->work();
 
         $this->removePIDFile();
-        //@unlink($this->pidFile);
     }
 
     /**
