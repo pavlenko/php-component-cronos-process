@@ -5,13 +5,8 @@ namespace PE\Component\Cronos\Process;
 use PE\Component\Cronos\Process\Traits\PIDAwareInterface;
 use PE\Component\Cronos\Process\Traits\TitleAwareInterface;
 
-interface WorkerProcessInterface extends PIDAwareInterface, TitleAwareInterface
+interface WorkerProcessInterface extends PIDAwareInterface, ProcessInterface, TitleAwareInterface
 {
-    /**
-     * @return bool
-     */
-    public function isShouldTerminate(): bool;
-
     /**
      * Execute logic
      */

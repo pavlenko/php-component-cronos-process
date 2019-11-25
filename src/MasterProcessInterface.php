@@ -4,13 +4,8 @@ namespace PE\Component\Cronos\Process;
 
 use PE\Component\Cronos\Process\Traits\TitleAwareInterface;
 
-interface MasterProcessInterface extends TitleAwareInterface
+interface MasterProcessInterface extends ProcessInterface, TitleAwareInterface
 {
-    /**
-     * @return bool
-     */
-    public function isShouldTerminate(): bool;
-
     /**
      * @param string|null $alias
      *

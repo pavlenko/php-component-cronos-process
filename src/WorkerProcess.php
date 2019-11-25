@@ -5,7 +5,7 @@ namespace PE\Component\Cronos\Process;
 use PE\Component\Cronos\Process\Traits\PIDAwareTrait;
 use PE\Component\Cronos\Process\Traits\TitleAwareTrait;
 
-class WorkerProcess implements WorkerProcessInterface
+class WorkerProcess extends ProcessBase implements WorkerProcessInterface
 {
     use PIDAwareTrait;
     use TitleAwareTrait;

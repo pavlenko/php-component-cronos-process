@@ -4,7 +4,7 @@ namespace PE\Component\Cronos\Process;
 
 use PE\Component\Cronos\Process\Traits\TitleAwareTrait;
 
-class MasterProcess implements MasterProcessInterface
+class MasterProcess extends ProcessBase implements MasterProcessInterface
 {
     use TitleAwareTrait;
 
