@@ -10,7 +10,7 @@ abstract class ProcessBase implements ProcessInterface
     public function sleepMS(int $millis): int
     {
         $start = microtime(true);
-        $delay = $millis * 0.001;
+        $delay = $millis / 1000;
 
         while ((microtime(true) - $start) < $delay) {
             if ($this->isShouldTerminate()) {
