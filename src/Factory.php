@@ -17,7 +17,7 @@ class Factory implements FactoryInterface
      */
     public function createMasterProcess(): MasterProcessInterface
     {
-        return new MasterProcess($this);
+        return new MasterProcess($this, $this->createSignalHandler());
     }
 
     /**

@@ -2,10 +2,12 @@
 
 namespace PE\Component\Cronos\Process;
 
+use PE\Component\Cronos\Dispatcher\EventDispatcherTrait;
 use PE\Component\Cronos\Process\Traits\TitleAwareTrait;
 
 class MasterProcess extends ProcessBase implements MasterProcessInterface
 {
+    use EventDispatcherTrait;
     use TitleAwareTrait;
 
     /**
@@ -21,7 +23,7 @@ class MasterProcess extends ProcessBase implements MasterProcessInterface
     /**
      * @var SignalHandlerInterface
      */
-    private $signals;
+    private $signalHandler;
 
     /**
      * @var WorkerControlInterface[]
@@ -29,16 +31,17 @@ class MasterProcess extends ProcessBase implements MasterProcessInterface
     private $children = [];
 
     /**
-     * @param FactoryInterface $factory
+     * @param FactoryInterface       $factory
+     * @param SignalHandlerInterface $signalHandler
      */
-    public function __construct(FactoryInterface $factory)
+    public function __construct(FactoryInterface $factory, SignalHandlerInterface $signalHandler)
     {
         $this->factory = $factory;
 
-        $this->signals = $factory->createSignalHandler();
-        $this->signals->attachListener(PCNTL::SIGTERM, [$this, 'kill']);
-        $this->signals->attachListener(PCNTL::SIGINT, [$this, 'kill']);
-        $this->signals->attachListener(PCNTL::SIGCHLD, [$this, 'onSignalFromChild']);
+        $this->signalHandler = $signalHandler;
+        $this->signalHandler->attachListener(PCNTL::SIGTERM, [$this, 'kill']);
+        $this->signalHandler->attachListener(PCNTL::SIGINT, [$this, 'kill']);
+        $this->signalHandler->attachListener(PCNTL::SIGCHLD, [$this, 'onSignalFromChild']);
     }
 
     /**
@@ -46,7 +49,7 @@ class MasterProcess extends ProcessBase implements MasterProcessInterface
      */
     public function isShouldTerminate(): bool
     {
-        $this->signals->dispatch();
+        $this->signalHandler->dispatch();
         return $this->shouldTerminate;
     }
 
@@ -67,7 +70,11 @@ class MasterProcess extends ProcessBase implements MasterProcessInterface
     {
         $status = 0;
         while (($pid = PCNTL::getInstance()->waitPID(-1, $status, PCNTL::WNOHANG)) > 0) {
+            $child = $this->children[$pid];
+
             unset($this->children[$pid]);
+
+            $this->trigger(self::EVENT_WORKER_EXIT, $child);
         }
 
         gc_collect_cycles();
@@ -87,6 +94,8 @@ class MasterProcess extends ProcessBase implements MasterProcessInterface
             throw new \RuntimeException('Failure to fork process');
         }
 
+        $this->trigger(self::EVENT_MASTER_FORK, $worker);
+
         if ($pid) {
             $this->children[$pid] = $worker;
 
@@ -104,7 +113,7 @@ class MasterProcess extends ProcessBase implements MasterProcessInterface
     public function wait()
     {
         while (count($this->children) > 0) {
-            $this->signals->dispatch();
+            $this->signalHandler->dispatch();
             usleep(100000);
         }
     }
@@ -119,5 +128,7 @@ class MasterProcess extends ProcessBase implements MasterProcessInterface
         foreach ($this->children as $worker) {
             $worker->kill($signal);
         }
+
+        $this->trigger(self::EVENT_MASTER_EXIT);
     }
 }

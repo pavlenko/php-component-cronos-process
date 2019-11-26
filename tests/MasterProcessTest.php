@@ -37,9 +37,8 @@ class MasterProcessTest extends TestCase
 
         /* @var $factory FactoryInterface|MockObject */
         $factory = $this->createMock(FactoryInterface::class);
-        $factory->expects(self::once())->method('createSignalHandler')->willReturn($handler);
 
-        new MasterProcess($factory);
+        new MasterProcess($factory, $handler);
     }
 
     public function testIsShouldTerminateReturnsFalse()
@@ -50,9 +49,8 @@ class MasterProcessTest extends TestCase
 
         /* @var $factory FactoryInterface|MockObject */
         $factory = $this->createMock(FactoryInterface::class);
-        $factory->expects(self::once())->method('createSignalHandler')->willReturn($handler);
 
-        $master = new MasterProcess($factory);
+        $master = new MasterProcess($factory, $handler);
 
         self::assertFalse($master->isShouldTerminate());
     }
@@ -64,9 +62,8 @@ class MasterProcessTest extends TestCase
 
         /* @var $factory FactoryInterface|MockObject */
         $factory = $this->createMock(FactoryInterface::class);
-        $factory->expects(self::once())->method('createSignalHandler')->willReturn($handler);
 
-        $master = new MasterProcess($factory);
+        $master = new MasterProcess($factory, $handler);
         $master->kill();
 
         self::assertTrue($master->isShouldTerminate());
@@ -79,13 +76,12 @@ class MasterProcessTest extends TestCase
 
         /* @var $factory FactoryInterface|MockObject */
         $factory = $this->createMock(FactoryInterface::class);
-        $factory->expects(self::once())->method('createSignalHandler')->willReturn($handler);
 
         $this->pcntlMock->expects(self::once())->method('fork')->willReturn(-1);
 
         $this->expectException(\RuntimeException::class);
 
-        $master = new MasterProcess($factory);
+        $master = new MasterProcess($factory, $handler);
         $master->fork(function () {});
     }
 
@@ -96,11 +92,10 @@ class MasterProcessTest extends TestCase
 
         /* @var $factory FactoryInterface|MockObject */
         $factory = $this->createMock(FactoryInterface::class);
-        $factory->expects(self::once())->method('createSignalHandler')->willReturn($handler);
 
         $this->pcntlMock->expects(self::once())->method('fork')->willReturn(1000);
 
-        $master = new MasterProcess($factory);
+        $master = new MasterProcess($factory, $handler);
         $worker = $master->fork(function () {});
 
         self::assertInstanceOf(WorkerControlInterface::class, $worker);
@@ -113,7 +108,6 @@ class MasterProcessTest extends TestCase
 
         /* @var $factory FactoryInterface|MockObject */
         $factory = $this->createMock(FactoryInterface::class);
-        $factory->expects(self::once())->method('createSignalHandler')->willReturn($handler);
 
         $thread = $this->createMock(WorkerProcessInterface::class);
         $thread->expects(self::once())->method('setPID');
@@ -124,7 +118,7 @@ class MasterProcessTest extends TestCase
 
         $this->pcntlMock->expects(self::once())->method('fork')->willReturn(0);
 
-        $master = new MasterProcess($factory);
+        $master = new MasterProcess($factory, $handler);
         $master->fork(function () {});
     }
 
@@ -135,13 +129,12 @@ class MasterProcessTest extends TestCase
 
         /* @var $factory FactoryInterface|MockObject */
         $factory = $this->createMock(FactoryInterface::class);
-        $factory->expects(self::once())->method('createSignalHandler')->willReturn($handler);
 
         $this->pcntlMock->expects(self::any())->method('setSignalHandler')->willReturn(true);
         $this->pcntlMock->expects(self::once())->method('fork')->willReturn(1000);
         $this->pcntlMock->expects(self::exactly(2))->method('waitPID')->willReturnOnConsecutiveCalls(1000, 0);
 
-        $master = new MasterProcess($factory);
+        $master = new MasterProcess($factory, $handler);
 
         $handler->expects(self::once())->method('dispatch')->willReturnCallback(function () use ($master) {
             $master->onSignalFromChild();
@@ -161,13 +154,12 @@ class MasterProcessTest extends TestCase
 
         /* @var $factory FactoryInterface|MockObject */
         $factory = $this->createMock(FactoryInterface::class);
-        $factory->expects(self::once())->method('createSignalHandler')->willReturn($handler);
         $factory->expects(self::once())->method('createWorkerControl')->willReturn($worker);
 
         $this->pcntlMock->expects(self::any())->method('setSignalHandler')->willReturn(true);
         $this->pcntlMock->expects(self::once())->method('fork')->willReturn(1000);
 
-        $master = new MasterProcess($factory);
+        $master = new MasterProcess($factory, $handler);
 
         $worker = $master->fork(function () {});
         $worker->expects(self::once())->method('kill');
@@ -186,7 +178,6 @@ class MasterProcessTest extends TestCase
 
         /* @var $factory FactoryInterface|MockObject */
         $factory = $this->createMock(FactoryInterface::class);
-        $factory->expects(self::once())->method('createSignalHandler')->willReturn($handler);
         $factory->expects(self::once())->method('createWorkerControl')->willReturn($worker);
 
         $pid = 1000;
@@ -194,7 +185,7 @@ class MasterProcessTest extends TestCase
         $this->pcntlMock->expects(self::any())->method('setSignalHandler')->willReturn(true);
         $this->pcntlMock->expects(self::once())->method('fork')->willReturn($pid);
 
-        $master = new MasterProcess($factory);
+        $master = new MasterProcess($factory, $handler);
 
         $worker = $master->fork(function () {});
         $worker->setAlias('foo');
