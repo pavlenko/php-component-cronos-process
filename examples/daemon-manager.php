@@ -20,11 +20,37 @@ $commands = [
 
 $factory = new Factory();
 
-$master = new MasterProcess($factory);
+$master = $factory->createMasterProcess();
 $master->setTitle($title = sprintf('daemon-manager(%s): master process', 'instance'));
 echo $title . "\n";
 
-while (!$master->isShouldTerminate()) {
+$loop = new Loop();
+$loop->addPeriodicTimer(1, function () use ($master, $loop, $commands) {
+    foreach ($commands as $command => $callable) {
+        if ($master->isShouldTerminate()) {
+            $loop->stop();
+            break;
+        }
+
+        if (count($master->getChildren($command)) > 0) {
+            continue;
+        }
+
+        $worker = $master->fork(function (WorkerProcessInterface $thread) use ($command, $callable) {
+            $thread->setTitle($title = sprintf('daemon-manager(%s): worker process(%s)', 'instance', $command));
+            echo $title . "\n";
+            $callable($thread);
+        });
+
+        $worker->setAlias($command);
+
+        usleep(1000000);
+    }
+});
+
+$loop->run();
+
+/*while (!$master->isShouldTerminate()) {
     foreach ($commands as $command => $callable) {
         if (count($master->getChildren($command)) > 0) {
             continue;
@@ -40,6 +66,6 @@ while (!$master->isShouldTerminate()) {
 
         usleep(1000000);
     }
-}
+}*/
 
 $master->wait();
