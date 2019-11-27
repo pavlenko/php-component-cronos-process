@@ -103,7 +103,9 @@ final class Loop implements LoopInterface
 
                 if (!isset($this->schedule[$id]) || $this->schedule[$id] !== $scheduled) {
                     // If timer removed while we loop - skip the current schedule
+                    // @codeCoverageIgnoreStart
                     continue;
+                    // @codeCoverageIgnoreEnd
                 }
 
                 // Get timer for ensure it not deleted before call
